@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <title>Neuromancer Analysis Visualization</title>
+        <script src="https://d3js.org/d3.v6.min.js"></script>
+        <style>
+            .avg-sentence-length-line {
+                fill: none;
+                stroke: steelblue;
+                stroke-width: 2;
+            }
+            .lexical-diversity-line {
+                fill: none;
+                stroke: crimson;
+                stroke-width: 2;
+            }
+            .marker {
+                fill: #fff;
+                stroke-width: 1.5;
+            }
+            .data-label {
+                font-family: sans-serif;
+                font-size: 10px;
+                fill: black;
+            }
+        </style>
+    </head>
+    <body>
+        <svg width="800" height="500"></svg>
+        <script>
+            const margin = { top: 200, right: 30, bottom: 50, left: 60 },
+                width = 7500 - margin.left - margin.right,
+                height = 1000 - margin.top - margin.bottom;
+
+            const svg = d3
+                .select('svg')
+                .attr('width', width + margin.left + margin.right)
+                .attr('height', height + margin.top + margin.bottom)
+                .append('g')
+                .attr('transform', `translate(${margin.left},${margin.top})`);
+
+            d3.json('analysis_results_with_summaries.json').then(function (data) {
+                data.forEach((d, i) => {
+                    d.index = i;
+                });
+
+                const x = d3
+                    .scaleLinear()
+                    .domain([0, data.length - 1])
+                    .range([0, width]);
+                const y = d3
+                    .scaleLinear()
+                    .domain([0, d3.max(data, (d) => Math.max(d.avg_sentence_length, d.lexical_diversity))])
+                    .range([height, 0]);
+
+                svg.append('g')
+                    .attr('transform', `translate(0,${height})`)
+                    .call(d3.axisBottom(x).tickFormat((d, i) => data[i].summary))
+                    .selectAll('text')
+                    .style('text-anchor', 'end')
+                    .attr('dx', '-.8em')
+                    .attr('dy', '.15em')
+                    .attr('transform', 'rotate(-65)');
+
+                svg.append('g').call(d3.axisLeft(y));
+
+                svg.append('path')
+                    .datum(data)
+                    .attr('class', 'avg-sentence-length-line')
+                    .attr(
+                        'd',
+                        d3
+                            .line()
+                            .x((d, i) => x(i))
+                            .y((d) => y(d.avg_sentence_length))
+                    );
+
+                svg.append('path')
+                    .datum(data)
+                    .attr('class', 'lexical-diversity-line')
+                    .attr(
+                        'd',
+                        d3
+                            .line()
+                            .x((d, i) => x(i))
+                            .y((d) => y(d.lexical_diversity * 20))
+                    );
+
+                svg.selectAll('.lexical-diversity-marker')
+                    .data(data)
+                    .enter()
+                    .append('circle')
+                    .attr('class', 'marker lexical-diversity-marker')
+                    .attr('r', 3.5)
+                    .attr('cx', (d, i) => x(i))
+                    .attr('cy', (d) => y(d.lexical_diversity * 20))
+                    .style('fill', 'crimson');
+
+                svg.selectAll('.avg-sentence-length-marker')
+                    .data(data)
+                    .enter()
+                    .append('circle')
+                    .attr('class', 'marker avg-sentence-length-marker')
+                    .attr('r', 3.5)
+                    .attr('cx', (d, i) => x(i))
+                    .attr('cy', (d) => y(d.avg_sentence_length))
+                    .style('fill', 'steelblue');
+
+                svg.selectAll('.avg-sentence-length-label')
+                    .data(data)
+                    .enter()
+                    .append('text')
+                    .attr('class', 'data-label')
+                    .attr('x', (d, i) => x(i))
+                    .attr('y', (d) => y(d.avg_sentence_length) - 10)
+                    .attr('transform', (d, i) => `rotate(90, ${x(i)}, ${y(d.avg_sentence_length) - 10})`)
+                    .text((d) => d.summary)
+                    .attr('text-anchor', 'end');
+            });
+        </script>
+    </body>
+</html>
